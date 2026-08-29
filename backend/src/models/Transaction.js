@@ -2,21 +2,18 @@ const mongoose = require("mongoose");
 
 const transactionSchema = new mongoose.Schema(
     {
-        // Usuario propietario del movimiento
         usuario: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
             required: true
         },
 
-        // Billetera relacionada
         billetera: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Wallet",
             required: true
         },
 
-        // Tipo de operación
         tipo: {
             type: String,
             enum: [
@@ -30,35 +27,30 @@ const transactionSchema = new mongoose.Schema(
             required: true
         },
 
-        // Valor de la operación
         monto: {
             type: Number,
             required: true,
             min: 0.01
         },
 
-        // Saldo antes de la operación
         saldoAnterior: {
             type: Number,
             required: true,
             min: 0
         },
 
-        // Saldo después de la operación
         saldoNuevo: {
             type: Number,
             required: true,
             min: 0
         },
 
-        // Descripción del movimiento
         descripcion: {
             type: String,
             trim: true,
             maxlength: 250
         },
 
-        // Estado de la operación
         estado: {
             type: String,
             enum: [
@@ -70,11 +62,10 @@ const transactionSchema = new mongoose.Schema(
             default: "completada"
         },
 
-        // Referencia única de la operación
         referencia: {
             type: String,
-            unique: true,
-            sparse: true
+            trim: true,
+            index: true
         }
     },
     {

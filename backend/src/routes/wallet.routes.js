@@ -1,10 +1,23 @@
 const express = require("express");
+const crypto = require("crypto");
+
 const Wallet = require("../models/Wallet");
+const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const verificarToken = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
+// ======================================================
+// GENERAR REFERENCIA
+// ======================================================
+
+function generarReferencia(prefijo) {
+    return `${prefijo}-${crypto
+        .randomBytes(8)
+        .toString("hex")
+        .toUpperCase()}`;
+}
 
 // ======================================================
 // CONSULTAR BILLETERA
@@ -13,7 +26,6 @@ const router = express.Router();
 
 router.get("/", verificarToken, async (req, res) => {
     try {
-
         const billetera = await Wallet.findOne({
             usuario: req.usuario.id
         });
@@ -33,9 +45,7 @@ router.get("/", verificarToken, async (req, res) => {
                 estado: billetera.estado
             }
         });
-
     } catch (error) {
-
         console.error("Error obteniendo billetera:", error);
 
         return res.status(500).json({
@@ -44,19 +54,21 @@ router.get("/", verificarToken, async (req, res) => {
     }
 });
 
-
 // ======================================================
-// RECARGA DE PRUEBA
+// RECARGA
 // POST /api/wallet/recharge
 // ======================================================
 
 router.post("/recharge", verificarToken, async (req, res) => {
+    const session = await Wallet.startSession();
+
     try {
+        const {
+            monto,
+            descripcion
+        } = req.body;
 
-        const { monto, descripcion } = req.body;
-
-        // 1. Validar monto
-        if (monto === undefined || monto === null) {
+        if (monto === undefined || monto === null || monto === "") {
             return res.status(400).json({
                 message: "El monto es obligatorio"
             });
@@ -64,13 +76,15 @@ router.post("/recharge", verificarToken, async (req, res) => {
 
         const montoNumerico = Number(monto);
 
-        if (!Number.isFinite(montoNumerico) || montoNumerico <= 0) {
+        if (
+            !Number.isFinite(montoNumerico) ||
+            montoNumerico <= 0
+        ) {
             return res.status(400).json({
                 message: "El monto debe ser un número mayor que 0"
             });
         }
 
-        // 2. Buscar billetera
         const billetera = await Wallet.findOne({
             usuario: req.usuario.id
         });
@@ -81,43 +95,67 @@ router.post("/recharge", verificarToken, async (req, res) => {
             });
         }
 
-        // 3. Verificar estado
         if (billetera.estado !== "activa") {
             return res.status(403).json({
                 message: "La billetera no está activa"
             });
         }
 
-        // 4. Saldo anterior
         const saldoAnterior = billetera.saldo;
+        const referencia = generarReferencia("REC");
 
-        // 5. Nuevo saldo
-        const saldoNuevo = saldoAnterior + montoNumerico;
+        session.startTransaction();
 
-        // 6. Actualizar billetera
-        billetera.saldo = saldoNuevo;
+        const billeteraActualizada =
+            await Wallet.findOneAndUpdate(
+                {
+                    _id: billetera._id,
+                    estado: "activa"
+                },
+                {
+                    $inc: {
+                        saldo: montoNumerico
+                    }
+                },
+                {
+                    new: true,
+                    session
+                }
+            );
 
-        await billetera.save();
+        if (!billeteraActualizada) {
+            await session.abortTransaction();
 
-        // 7. Crear referencia
-        const referencia = `REC-${Date.now()}-${Math.floor(
-            Math.random() * 10000
-        )}`;
+            return res.status(400).json({
+                message: "No se pudo actualizar la billetera"
+            });
+        }
 
-        // 8. Registrar transacción
-        const transaccion = await Transaction.create({
-            usuario: req.usuario.id,
-            billetera: billetera._id,
-            tipo: "recarga",
-            monto: montoNumerico,
-            saldoAnterior,
-            saldoNuevo,
-            descripcion: descripcion || "Recarga de prueba",
-            estado: "completada",
-            referencia
-        });
+        const saldoNuevo = billeteraActualizada.saldo;
 
-        // 9. Respuesta
+        const [transaccion] = await Transaction.create(
+            [
+                {
+                    usuario: req.usuario.id,
+                    billetera: billetera._id,
+                    tipo: "recarga",
+                    monto: montoNumerico,
+                    saldoAnterior,
+                    saldoNuevo,
+                    descripcion:
+                        descripcion?.trim() ||
+                        "Recarga desde PagaYA",
+                    estado: "completada",
+                    referencia
+                }
+            ],
+            {
+                session
+            }
+        );
+
+        await session.commitTransaction();
+
         return res.status(201).json({
             message: "Recarga realizada correctamente",
 
@@ -128,53 +166,34 @@ router.post("/recharge", verificarToken, async (req, res) => {
             },
 
             billetera: {
-                id: billetera._id,
+                id: billeteraActualizada._id,
                 saldoAnterior,
                 saldoNuevo,
-                moneda: billetera.moneda
+                moneda: billeteraActualizada.moneda
             }
         });
-
     } catch (error) {
+        try {
+            await session.abortTransaction();
+        } catch (abortError) {
+            console.error(
+                "Error cancelando recarga:",
+                abortError
+            );
+        }
 
-        console.error("Error realizando recarga:", error);
+        console.error(
+            "Error realizando recarga:",
+            error
+        );
 
         return res.status(500).json({
-            message: "Error interno del servidor"
+            message: "No se pudo realizar la recarga"
         });
+    } finally {
+        await session.endSession();
     }
 });
-
-
-// ======================================================
-// HISTORIAL DE MOVIMIENTOS
-// GET /api/wallet/transactions
-// ======================================================
-
-router.get("/transactions", verificarToken, async (req, res) => {
-    try {
-
-        const movimientos = await Transaction.find({
-            usuario: req.usuario.id
-        }).sort({ createdAt: -1 });
-
-        return res.status(200).json({
-            message: "Movimientos obtenidos correctamente",
-            cantidad: movimientos.length,
-            movimientos
-        });
-
-    } catch (error) {
-
-        console.error("Error obteniendo movimientos:", error);
-
-        return res.status(500).json({
-            message: "Error interno del servidor"
-        });
-    }
-});
-
-
 
 // ======================================================
 // REALIZAR PAGO
@@ -182,28 +201,31 @@ router.get("/transactions", verificarToken, async (req, res) => {
 // ======================================================
 
 router.post("/payment", verificarToken, async (req, res) => {
+    const session = await Wallet.startSession();
+
     try {
+        const {
+            monto,
+            descripcion
+        } = req.body;
 
-        const { monto, descripcion } = req.body;
-
-        // 1. Validar que exista el monto
-        if (monto === undefined || monto === null) {
+        if (monto === undefined || monto === null || monto === "") {
             return res.status(400).json({
                 message: "El monto es obligatorio"
             });
         }
 
-        // 2. Convertir el monto a número
         const montoNumerico = Number(monto);
 
-        // 3. Validar el monto
-        if (!Number.isFinite(montoNumerico) || montoNumerico <= 0) {
+        if (
+            !Number.isFinite(montoNumerico) ||
+            montoNumerico <= 0
+        ) {
             return res.status(400).json({
                 message: "El monto debe ser un número mayor que 0"
             });
         }
 
-        // 4. Buscar la billetera del usuario autenticado
         const billetera = await Wallet.findOne({
             usuario: req.usuario.id
         });
@@ -214,67 +236,71 @@ router.post("/payment", verificarToken, async (req, res) => {
             });
         }
 
-        // 5. Verificar que la billetera esté activa
         if (billetera.estado !== "activa") {
             return res.status(403).json({
                 message: "La billetera no está activa"
             });
         }
 
-        // 6. Verificar que haya saldo suficiente
-        if (montoNumerico > billetera.saldo) {
+        const saldoAnterior = billetera.saldo;
+        const referencia = generarReferencia("PAY");
+
+        session.startTransaction();
+
+        const billeteraActualizada =
+            await Wallet.findOneAndUpdate(
+                {
+                    _id: billetera._id,
+                    saldo: {
+                        $gte: montoNumerico
+                    },
+                    estado: "activa"
+                },
+                {
+                    $inc: {
+                        saldo: -montoNumerico
+                    }
+                },
+                {
+                    new: true,
+                    session
+                }
+            );
+
+        if (!billeteraActualizada) {
+            await session.abortTransaction();
+
             return res.status(400).json({
-                message: "Saldo insuficiente"
+                message:
+                    "Saldo insuficiente o la billetera no está activa"
             });
         }
 
-        // 7. Guardar saldo anterior
-        const saldoAnterior = billetera.saldo;
+        const saldoNuevo = billeteraActualizada.saldo;
 
-        // 8. Calcular nuevo saldo
-        const saldoNuevo = saldoAnterior - montoNumerico;
+        const [transaccion] = await Transaction.create(
+            [
+                {
+                    usuario: req.usuario.id,
+                    billetera: billetera._id,
+                    tipo: "pago",
+                    monto: montoNumerico,
+                    saldoAnterior,
+                    saldoNuevo,
+                    descripcion:
+                        descripcion?.trim() ||
+                        "Pago PagaYA",
+                    estado: "completada",
+                    referencia
+                }
+            ],
+            {
+                session
+            }
+        );
 
-       
-        // 9. Actualizar billetera de forma segura
-const billeteraActualizada = await Wallet.findOneAndUpdate(
-    {
-        _id: billetera._id,
-        saldo: { $gte: montoNumerico },
-        estado: "activa"
-    },
-    {
-        $inc: { saldo: -montoNumerico }
-    },
-    {
-        new: true
-    }
-);
+        await session.commitTransaction();
 
-if (!billeteraActualizada) {
-    return res.status(400).json({
-        message: "El saldo cambió o es insuficiente para realizar el pago"
-    });
-}
-
-        // 10. Crear referencia
-        const referencia = `PAY-${Date.now()}-${Math.floor(
-            Math.random() * 10000
-        )}`;
-
-        // 11. Registrar movimiento
-        const transaccion = await Transaction.create({
-            usuario: req.usuario.id,
-            billetera: billetera._id,
-            tipo: "pago",
-            monto: montoNumerico,
-            saldoAnterior,
-            saldoNuevo: billeteraActualizada.saldo,
-            descripcion: descripcion || "Pago PagaYA",
-            estado: "completada",
-            referencia
-        });
-
-        // 12. Responder
         return res.status(201).json({
             message: "Pago realizado correctamente",
 
@@ -285,101 +311,66 @@ if (!billeteraActualizada) {
             },
 
             billetera: {
-                id: billetera._id,
+                id: billeteraActualizada._id,
                 saldoAnterior,
-                saldoNuevo: billeteraActualizada.saldo,
-                moneda: billetera.moneda
+                saldoNuevo,
+                moneda: billeteraActualizada.moneda
             }
         });
-
     } catch (error) {
-
-        console.error("Error realizando pago:", error);
-
-        return res.status(500).json({
-            message: "Error interno del servidor"
-        });
-    }
-});
-
-// ======================================================
-// CONSULTAR MOVIMIENTO POR REFERENCIA
-// GET /api/wallet/transactions/:referencia
-// ======================================================
-
-router.get("/transactions/:referencia", verificarToken, async (req, res) => {
-    try {
-
-        const { referencia } = req.params;
-
-        // Buscar la transacción del usuario autenticado
-        const transaccion = await Transaction.findOne({
-            referencia,
-            usuario: req.usuario.id
-        });
-
-        if (!transaccion) {
-            return res.status(404).json({
-                message: "Movimiento no encontrado"
-            });
+        try {
+            await session.abortTransaction();
+        } catch (abortError) {
+            console.error(
+                "Error cancelando pago:",
+                abortError
+            );
         }
 
-        return res.status(200).json({
-            message: "Movimiento obtenido correctamente",
-            movimiento: transaccion
-        });
-
-    } catch (error) {
-
-        console.error("Error obteniendo movimiento:", error);
+        console.error(
+            "Error realizando pago:",
+            error
+        );
 
         return res.status(500).json({
-            message: "Error interno del servidor"
+            message: "No se pudo realizar el pago"
         });
+    } finally {
+        await session.endSession();
     }
 });
 
-
 // ======================================================
-// CONSULTAR COMPROBANTE DE PAGO
-// GET /api/wallet/transactions/:referencia/receipt
+// HISTORIAL
+// GET /api/wallet/transactions
 // ======================================================
 
 router.get(
-    "/transactions/:referencia/receipt",
+    "/transactions",
     verificarToken,
     async (req, res) => {
         try {
-            const { referencia } = req.params;
-
-            const transaccion = await Transaction.findOne({
-                referencia,
-                usuario: req.usuario.id
-            });
-
-            if (!transaccion) {
-                return res.status(404).json({
-                    message: "Comprobante no encontrado"
+            const movimientos =
+                await Transaction.find({
+                    usuario: req.usuario.id
+                }).sort({
+                    createdAt: -1
                 });
-            }
 
             return res.status(200).json({
-                message: "Comprobante obtenido correctamente",
-                comprobante: {
-                    tipo: transaccion.tipo.toUpperCase(),
-                    estado: transaccion.estado.toUpperCase(),
-                    referencia: transaccion.referencia,
-                    monto: transaccion.monto,
-                    moneda: "COP",
-                    saldoAnterior: transaccion.saldoAnterior,
-                    saldoNuevo: transaccion.saldoNuevo,
-                    descripcion: transaccion.descripcion,
-                    fecha: transaccion.createdAt
-                }
-            });
+                message:
+                    "Movimientos obtenidos correctamente",
 
+                cantidad:
+                    movimientos.length,
+
+                movimientos
+            });
         } catch (error) {
-            console.error("Error obteniendo comprobante:", error);
+            console.error(
+                "Error obteniendo movimientos:",
+                error
+            );
 
             return res.status(500).json({
                 message: "Error interno del servidor"
@@ -388,9 +379,546 @@ router.get(
     }
 );
 
+// ======================================================
+// TRANSFERENCIA
+// POST /api/wallet/transfer
+// ======================================================
+
+router.post(
+    "/transfer",
+    verificarToken,
+    async (req, res) => {
+        const session = await Wallet.startSession();
+
+        try {
+            const {
+                identificador,
+                monto,
+                descripcion
+            } = req.body;
+
+            // ------------------------------------------
+            // IDENTIFICADOR
+            // ------------------------------------------
+
+            if (
+                !identificador ||
+                !identificador.trim()
+            ) {
+                return res.status(400).json({
+                    message:
+                        "El correo o número de teléfono del destinatario es obligatorio"
+                });
+            }
+
+            const identificadorLimpio =
+                identificador.trim();
+
+            // ------------------------------------------
+            // MONTO
+            // ------------------------------------------
+
+            if (
+                monto === undefined ||
+                monto === null ||
+                monto === ""
+            ) {
+                return res.status(400).json({
+                    message: "El monto es obligatorio"
+                });
+            }
+
+            const montoNumerico = Number(monto);
+
+            if (
+                !Number.isFinite(montoNumerico) ||
+                montoNumerico <= 0
+            ) {
+                return res.status(400).json({
+                    message:
+                        "El monto debe ser un número mayor que 0"
+                });
+            }
+
+            // ------------------------------------------
+            // DESTINATARIO
+            // ------------------------------------------
+
+            const destinatario =
+                await User.findOne({
+                    $or: [
+                        {
+                            email:
+                                identificadorLimpio.toLowerCase()
+                        },
+                        {
+                            telefono:
+                                identificadorLimpio
+                        }
+                    ]
+                });
+
+            if (!destinatario) {
+                return res.status(404).json({
+                    message:
+                        "No encontramos una cuenta asociada a ese correo o número de teléfono"
+                });
+            }
+
+            // ------------------------------------------
+            // EVITAR AUTO TRANSFERENCIA
+            // ------------------------------------------
+
+            if (
+                destinatario._id.toString() ===
+                req.usuario.id.toString()
+            ) {
+                return res.status(400).json({
+                    message:
+                        "No puedes transferir dinero a tu propia cuenta"
+                });
+            }
+
+            // ------------------------------------------
+            // ESTADO DESTINATARIO
+            // ------------------------------------------
+
+            if (
+                destinatario.estado !==
+                "activo"
+            ) {
+                return res.status(403).json({
+                    message:
+                        "La cuenta del destinatario no está activa"
+                });
+            }
+
+            // ------------------------------------------
+            // BILLETERA REMITENTE
+            // ------------------------------------------
+
+            const billeteraRemitente =
+                await Wallet.findOne({
+                    usuario: req.usuario.id
+                });
+
+            if (!billeteraRemitente) {
+                return res.status(404).json({
+                    message:
+                        "No se encontró tu billetera"
+                });
+            }
+
+            // ------------------------------------------
+            // BILLETERA DESTINATARIO
+            // ------------------------------------------
+
+            const billeteraDestinatario =
+                await Wallet.findOne({
+                    usuario: destinatario._id
+                });
+
+            if (!billeteraDestinatario) {
+                return res.status(404).json({
+                    message:
+                        "El destinatario no tiene una billetera disponible"
+                });
+            }
+
+            // ------------------------------------------
+            // ESTADO BILLETERAS
+            // ------------------------------------------
+
+            if (
+                billeteraRemitente.estado !==
+                "activa"
+            ) {
+                return res.status(403).json({
+                    message:
+                        "Tu billetera no está activa"
+                });
+            }
+
+            if (
+                billeteraDestinatario.estado !==
+                "activa"
+            ) {
+                return res.status(403).json({
+                    message:
+                        "La billetera del destinatario no está activa"
+                });
+            }
+
+            // ------------------------------------------
+            // MONEDA
+            // ------------------------------------------
+
+            if (
+                billeteraRemitente.moneda !==
+                billeteraDestinatario.moneda
+            ) {
+                return res.status(400).json({
+                    message:
+                        "Las billeteras utilizan monedas diferentes"
+                });
+            }
+
+            const saldoAnteriorRemitente =
+                billeteraRemitente.saldo;
+
+            const saldoAnteriorDestinatario =
+                billeteraDestinatario.saldo;
+
+            const referencia =
+                generarReferencia("TRF");
+
+            // ------------------------------------------
+            // INICIAR TRANSACCIÓN
+            // ------------------------------------------
+
+            session.startTransaction();
+
+            // ------------------------------------------
+            // DESCONTAR REMITENTE
+            // ------------------------------------------
+
+            const remitenteActualizado =
+                await Wallet.findOneAndUpdate(
+                    {
+                        _id:
+                            billeteraRemitente._id,
+
+                        saldo: {
+                            $gte:
+                                montoNumerico
+                        },
+
+                        estado: "activa"
+                    },
+                    {
+                        $inc: {
+                            saldo:
+                                -montoNumerico
+                        }
+                    },
+                    {
+                        new: true,
+                        session
+                    }
+                );
+
+            if (!remitenteActualizado) {
+                await session.abortTransaction();
+
+                return res.status(400).json({
+                    message:
+                        "Saldo insuficiente o la billetera no está activa"
+                });
+            }
+
+            // ------------------------------------------
+            // ACREDITAR DESTINATARIO
+            // ------------------------------------------
+
+            const destinatarioActualizado =
+                await Wallet.findOneAndUpdate(
+                    {
+                        _id:
+                            billeteraDestinatario._id,
+
+                        estado: "activa"
+                    },
+                    {
+                        $inc: {
+                            saldo:
+                                montoNumerico
+                        }
+                    },
+                    {
+                        new: true,
+                        session
+                    }
+                );
+
+            if (!destinatarioActualizado) {
+                throw new Error(
+                    "No se pudo acreditar al destinatario"
+                );
+            }
+
+            // ------------------------------------------
+            // CREAR MOVIMIENTO REMITENTE
+            // ------------------------------------------
+
+            await Transaction.create(
+                [
+                    {
+                        usuario:
+                            req.usuario.id,
+
+                        billetera:
+                            billeteraRemitente._id,
+
+                        tipo:
+                            "transferencia_enviada",
+
+                        monto:
+                            montoNumerico,
+
+                        saldoAnterior:
+                            saldoAnteriorRemitente,
+
+                        saldoNuevo:
+                            remitenteActualizado.saldo,
+
+                        descripcion:
+                            descripcion?.trim() ||
+                            `Transferencia a ${destinatario.nombre} ${destinatario.apellido}`,
+
+                        estado:
+                            "completada",
+
+                        referencia
+                    }
+                ],
+                {
+                    session
+                }
+            );
+
+            // ------------------------------------------
+            // CREAR MOVIMIENTO DESTINATARIO
+            // ------------------------------------------
+
+            await Transaction.create(
+                [
+                    {
+                        usuario:
+                            destinatario._id,
+
+                        billetera:
+                            billeteraDestinatario._id,
+
+                        tipo:
+                            "transferencia_recibida",
+
+                        monto:
+                            montoNumerico,
+
+                        saldoAnterior:
+                            saldoAnteriorDestinatario,
+
+                        saldoNuevo:
+                            destinatarioActualizado.saldo,
+
+                        descripcion:
+                            descripcion?.trim() ||
+                            `Transferencia recibida`,
+
+                        estado:
+                            "completada",
+
+                        referencia
+                    }
+                ],
+                {
+                    session
+                }
+            );
+
+            // ------------------------------------------
+            // CONFIRMAR
+            // ------------------------------------------
+
+            await session.commitTransaction();
+
+            return res.status(201).json({
+                message:
+                    "Transferencia realizada correctamente",
+
+                transferencia: {
+                    monto:
+                        montoNumerico,
+
+                    referencia,
+
+                    estado:
+                        "completada",
+
+                    destinatario: {
+                        nombre:
+                            destinatario.nombre,
+
+                        apellido:
+                            destinatario.apellido,
+
+                        email:
+                            destinatario.email
+                    }
+                },
+
+                billetera: {
+                    id:
+                        remitenteActualizado._id,
+
+                    saldoAnterior:
+                        saldoAnteriorRemitente,
+
+                    saldoNuevo:
+                        remitenteActualizado.saldo,
+
+                    moneda:
+                        remitenteActualizado.moneda
+                }
+            });
+        } catch (error) {
+            try {
+                await session.abortTransaction();
+            } catch (abortError) {
+                console.error(
+                    "Error cancelando transferencia:",
+                    abortError
+                );
+            }
+
+            console.error(
+                "Error realizando transferencia:",
+                error
+            );
+
+            return res.status(500).json({
+                message:
+                    "No se pudo completar la transferencia"
+            });
+        } finally {
+            await session.endSession();
+        }
+    }
+);
 
 // ======================================================
-// EXPORTAR RUTAS
+// CONSULTAR MOVIMIENTO
+// GET /api/wallet/transactions/:referencia
 // ======================================================
+
+router.get(
+    "/transactions/:referencia",
+    verificarToken,
+    async (req, res) => {
+        try {
+            const {
+                referencia
+            } = req.params;
+
+            const transaccion =
+                await Transaction.findOne({
+                    referencia,
+                    usuario:
+                        req.usuario.id
+                });
+
+            if (!transaccion) {
+                return res.status(404).json({
+                    message:
+                        "Movimiento no encontrado"
+                });
+            }
+
+            return res.status(200).json({
+                message:
+                    "Movimiento obtenido correctamente",
+
+                movimiento:
+                    transaccion
+            });
+        } catch (error) {
+            console.error(
+                "Error obteniendo movimiento:",
+                error
+            );
+
+            return res.status(500).json({
+                message:
+                    "Error interno del servidor"
+            });
+        }
+    }
+);
+
+// ======================================================
+// COMPROBANTE
+// GET /api/wallet/transactions/:referencia/receipt
+// ======================================================
+
+router.get(
+    "/transactions/:referencia/receipt",
+    verificarToken,
+    async (req, res) => {
+        try {
+            const {
+                referencia
+            } = req.params;
+
+            const transaccion =
+                await Transaction.findOne({
+                    referencia,
+                    usuario:
+                        req.usuario.id
+                });
+
+            if (!transaccion) {
+                return res.status(404).json({
+                    message:
+                        "Comprobante no encontrado"
+                });
+            }
+
+            return res.status(200).json({
+                message:
+                    "Comprobante obtenido correctamente",
+
+                comprobante: {
+                    tipo:
+                        transaccion.tipo.toUpperCase(),
+
+                    estado:
+                        transaccion.estado.toUpperCase(),
+
+                    referencia:
+                        transaccion.referencia,
+
+                    monto:
+                        transaccion.monto,
+
+                    moneda:
+                        transaccion.billetera?.moneda ||
+                        "COP",
+
+                    saldoAnterior:
+                        transaccion.saldoAnterior,
+
+                    saldoNuevo:
+                        transaccion.saldoNuevo,
+
+                    descripcion:
+                        transaccion.descripcion,
+
+                    fecha:
+                        transaccion.createdAt
+                }
+            });
+        } catch (error) {
+            console.error(
+                "Error obteniendo comprobante:",
+                error
+            );
+
+            return res.status(500).json({
+                message:
+                    "Error interno del servidor"
+            });
+        }
+    }
+);
 
 module.exports = router;

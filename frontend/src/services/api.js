@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:5000/api";
+const API_URL = "https://money-blah-officer-centuries.trycloudflare.com/api";
 
 async function request(endpoint, options = {}) {
     const token = localStorage.getItem("token");
@@ -8,27 +8,38 @@ async function request(endpoint, options = {}) {
         ...(options.headers || {})
     };
 
+    // El token sigue siendo necesario para autenticar
+    // las operaciones de la billetera.
     if (token) {
         headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, {
-        ...options,
-        headers
-    });
+    const response = await fetch(
+        `${API_URL}${endpoint}`,
+        {
+            ...options,
+            headers
+        }
+    );
 
-    const data = await response.json().catch(() => ({}));
+    const data =
+        await response.json().catch(() => ({}));
 
     if (!response.ok) {
         throw new Error(
-            data.message || "Error en la solicitud"
+            data.message ||
+            "Error en la solicitud"
         );
     }
 
     return data;
 }
 
-export const api = {
+const api = {
+
+    // ==========================================
+    // AUTENTICACIÓN
+    // ==========================================
 
     login: (datos) =>
         request("/auth/login", {
@@ -42,9 +53,67 @@ export const api = {
             body: JSON.stringify(datos)
         }),
 
-    // Obtener usuario y billetera actual
     profile: () =>
-        request("/auth/profile")
+        request("/auth/profile"),
+
+    // ==========================================
+    // BILLETERA
+    // ==========================================
+
+    transactions: () =>
+        request("/wallet/transactions"),
+
+    // ==========================================
+    // RECARGA
+    // ==========================================
+
+    recharge: (datos) =>
+        request("/wallet/recharge", {
+            method: "POST",
+            body: JSON.stringify(datos)
+        }),
+
+    // ==========================================
+    // PAGO
+    // ==========================================
+
+    payment: (datos) =>
+        request("/wallet/payment", {
+            method: "POST",
+            body: JSON.stringify(datos)
+        }),
+
+    // ==========================================
+    // TRANSFERENCIA
+    // ==========================================
+
+    transfer: (datos) =>
+        request("/wallet/transfer", {
+            method: "POST",
+            body: JSON.stringify(datos)
+        }),
+
+    // ==========================================
+    // MOVIMIENTO POR REFERENCIA
+    // ==========================================
+
+    transactionByReference: (referencia) =>
+        request(
+            `/wallet/transactions/${encodeURIComponent(
+                referencia
+            )}`
+        ),
+
+    // ==========================================
+    // COMPROBANTE
+    // ==========================================
+
+    receipt: (referencia) =>
+        request(
+            `/wallet/transactions/${encodeURIComponent(
+                referencia
+            )}/receipt`
+        )
 };
 
 export default api;

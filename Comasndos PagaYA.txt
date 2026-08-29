@@ -1,0 +1,368 @@
+===================================================================================
+
+Ejecutar en Windows PowerShell modo admin para que salga la app a la red 
+
+cd C:\cloudflared
+.\cloudflared.exe tunnel --url http://localhost:5000
+
+cd C:\cloudflared
+.\cloudflared.exe tunnel --url http://localhost:5173
+
+==================================================================================
+
+(api.js) frontend
+
+const API_URL = "https://simple-get-sufficient-residents.trycloudflare.com/api";
+
+(CAMBIAR LA URL AL EJECUTAR LOS PUERTO )
+
+=================================================================================
+
+(.env) frontend
+
+VITE_API_URL=https://brilliant-shades-adaptor-download.trycloudflare.com    
+
+(CAMBIAR LA URL AL EJECUTAR LOS PUERTO )
+
+================================================================================
+
+  Comandos Bases de datos MongoDB y SQL Server  
+  
+=======================================================
+
+1. Verificar MongoDB antes de migrar
+node diagnostico-mongodb.js
+
+=======================================================
+
+2. Migrar MongoDB → PagaYA_SQL
+node migrar-mongodb-sql.js
+
+========================================================
+
+3. Comprobar PagaYA_SQL
+
+========================================================
+
+3. Comprobar PagaYA_SQL
+
+USE PagaYA_SQL;
+GO
+
+(Usuarios)
+SELECT *
+FROM dbo.Usuarios
+ORDER BY id;
+
+(Billeteras)
+SELECT *
+FROM dbo.Billeteras
+ORDER BY id;
+
+(Transacciones)
+SELECT *
+FROM dbo.Transacciones
+ORDER BY id;
+
+========================================================
+
+4. Comprobar cantidades SQL
+
+SELECT 'Usuarios' AS Tabla, COUNT(*) AS Registros
+FROM PagaYA_SQL.dbo.Usuarios
+
+UNION ALL
+
+SELECT 'Billeteras', COUNT(*)
+FROM PagaYA_SQL.dbo.Billeteras
+
+UNION ALL
+
+SELECT 'Transacciones', COUNT(*)
+FROM PagaYA_SQL.dbo.Transacciones;
+
+
+========================================================
+
+5. Comprobar las relaciones
+
+(Billeteras de los usuarios)
+SELECT
+    b.id AS Billetera,
+    b.usuario_id,
+    u.nombre,
+    u.apellido,
+    u.email,
+    b.saldo,
+    b.moneda,
+    b.estado
+FROM PagaYA_SQL.dbo.Billeteras b
+INNER JOIN PagaYA_SQL.dbo.Usuarios u
+    ON b.usuario_id = u.id
+ORDER BY b.id;
+
+(Transacciones de los usuarios)
+SELECT
+    t.id AS Transaccion,
+    t.usuario_id,
+    u.email,
+    t.billetera_id,
+    t.tipo,
+    t.monto,
+    t.saldo_anterior,
+    t.saldo_nuevo,
+    t.estado,
+    t.referencia
+FROM PagaYA_SQL.dbo.Transacciones t
+INNER JOIN PagaYA_SQL.dbo.Usuarios u
+    ON t.usuario_id = u.id
+INNER JOIN PagaYA_SQL.dbo.Billeteras b
+    ON t.billetera_id = b.id
+ORDER BY t.id;
+
+========================================================
+
+Copiar PagaYA_SQL → PagaYA_Backup
+
+
+========================================================
+
+6. Limpiar el Backup antes de copiar
+
+USE PagaYA_Backup;
+GO
+
+DELETE FROM dbo.Transacciones;
+DELETE FROM dbo.Billeteras;
+DELETE FROM dbo.Usuarios;
+GO
+
+========================================================
+
+7. Copiar Usuarios
+
+SET IDENTITY_INSERT PagaYA_Backup.dbo.Usuarios ON;
+
+INSERT INTO PagaYA_Backup.dbo.Usuarios
+(
+    id,
+    nombre,
+    apellido,
+    email,
+    telefono,
+    password,
+    rol,
+    estado,
+    created_at,
+    updated_at,
+    mongo_id
+)
+SELECT
+    id,
+    nombre,
+    apellido,
+    email,
+    telefono,
+    password,
+    rol,
+    estado,
+    created_at,
+    updated_at,
+    mongo_id
+FROM PagaYA_SQL.dbo.Usuarios;
+
+SET IDENTITY_INSERT PagaYA_Backup.dbo.Usuarios OFF;
+
+========================================================
+
+8. Copiar Billeteras
+
+SET IDENTITY_INSERT PagaYA_Backup.dbo.Billeteras ON;
+
+INSERT INTO PagaYA_Backup.dbo.Billeteras
+(
+    id,
+    usuario_id,
+    saldo,
+    moneda,
+    estado,
+    created_at,
+    updated_at,
+    mongo_id
+)
+SELECT
+    id,
+    usuario_id,
+    saldo,
+    moneda,
+    estado,
+    created_at,
+    updated_at,
+    mongo_id
+FROM PagaYA_SQL.dbo.Billeteras;
+
+SET IDENTITY_INSERT PagaYA_Backup.dbo.Billeteras OFF;
+
+========================================================
+
+9. Copiar Transacciones
+
+SET IDENTITY_INSERT PagaYA_Backup.dbo.Transacciones ON;
+
+INSERT INTO PagaYA_Backup.dbo.Transacciones
+(
+    id,
+    usuario_id,
+    billetera_id,
+    tipo,
+    monto,
+    saldo_anterior,
+    saldo_nuevo,
+    descripcion,
+    estado,
+    referencia,
+    created_at,
+    updated_at,
+    mongo_id
+)
+SELECT
+    id,
+    usuario_id,
+    billetera_id,
+    tipo,
+    monto,
+    saldo_anterior,
+    saldo_nuevo,
+    descripcion,
+    estado,
+    referencia,
+    created_at,
+    updated_at,
+    mongo_id
+FROM PagaYA_SQL.dbo.Transacciones;
+
+SET IDENTITY_INSERT PagaYA_Backup.dbo.Transacciones OFF;
+
+
+========================================================
+
+10. Verificar el Backup
+
+SELECT 'Usuarios' AS Tabla, COUNT(*) AS Registros
+FROM PagaYA_Backup.dbo.Usuarios
+
+UNION ALL
+
+SELECT 'Billeteras', COUNT(*)
+FROM PagaYA_Backup.dbo.Billeteras
+
+UNION ALL
+
+SELECT 'Transacciones', COUNT(*)
+FROM PagaYA_Backup.dbo.Transacciones;
+
+========================================================
+
+11. Comparar SQL vs Backup
+
+SELECT
+    'Usuarios' AS Tabla,
+    (SELECT COUNT(*) FROM PagaYA_SQL.dbo.Usuarios) AS PagaYA_SQL,
+    (SELECT COUNT(*) FROM PagaYA_Backup.dbo.Usuarios) AS PagaYA_Backup
+
+UNION ALL
+
+SELECT
+    'Billeteras',
+    (SELECT COUNT(*) FROM PagaYA_SQL.dbo.Billeteras),
+    (SELECT COUNT(*) FROM PagaYA_Backup.dbo.Billeteras)
+
+UNION ALL
+
+SELECT
+    'Transacciones',
+    (SELECT COUNT(*) FROM PagaYA_SQL.dbo.Transacciones),
+    (SELECT COUNT(*) FROM PagaYA_Backup.dbo.Transacciones);
+
+========================================================
+
+12. Ver los usuarios del Backup
+
+SELECT
+    id,
+    mongo_id,
+    nombre,
+    apellido,
+    email,
+    telefono,
+    rol,
+    estado,
+    created_at,
+    updated_at
+FROM PagaYA_Backup.dbo.Usuarios
+ORDER BY id;
+
+========================================================
+
+14. Ver las billeteras del Backup
+
+SELECT
+    b.id,
+    b.mongo_id,
+    b.usuario_id,
+    u.email,
+    b.saldo,
+    b.moneda,
+    b.estado,
+    b.created_at,
+    b.updated_at
+FROM PagaYA_Backup.dbo.Billeteras b
+INNER JOIN PagaYA_Backup.dbo.Usuarios u
+    ON b.usuario_id = u.id
+ORDER BY b.id;
+
+
+========================================================
+
+15. Ver las transacciones del Backup
+
+SELECT
+    t.id,
+    t.mongo_id,
+    t.usuario_id,
+    u.email,
+    t.billetera_id,
+    t.tipo,
+    t.monto,
+    t.saldo_anterior,
+    t.saldo_nuevo,
+    t.descripcion,
+    t.estado,
+    t.referencia,
+    t.created_at,
+    t.updated_at
+FROM PagaYA_Backup.dbo.Transacciones t
+INNER JOIN PagaYA_Backup.dbo.Usuarios u
+    ON t.usuario_id = u.id
+ORDER BY t.id;
+
+=======================================================
+
+                    PagaYA
+                      │
+        ┌─────────────┴──────────────┐
+        │                            │
+     FRONTEND                     BACKEND
+        │                            │
+        │                     ┌──────┴──────┐
+        │                     │             │
+        │                  MongoDB      SQL Server
+        │                     │             │
+        │                     │          PagaYA_SQL
+        │                     │             │
+        │                     │        PagaYA_Backup
+        │                     │
+        └────────────── API ──┘
+
+==============================================================================================================================
+==============================================================================================================================
