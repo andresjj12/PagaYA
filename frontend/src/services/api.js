@@ -1,3 +1,5 @@
+import { mockRequest } from "./mockBackend";
+
 const API_URL = "https://money-blah-officer-centuries.trycloudflare.com/api";
 
 async function request(endpoint, options = {}) {
@@ -14,13 +16,30 @@ async function request(endpoint, options = {}) {
         headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(
-        `${API_URL}${endpoint}`,
-        {
-            ...options,
-            headers
-        }
-    );
+    let response;
+
+    try {
+        response = await fetch(
+            `${API_URL}${endpoint}`,
+            {
+                ...options,
+                headers
+            }
+        );
+    } catch {
+        // El servidor no está disponible.
+        // Usamos el modo demo (mock) local.
+        return mockRequest(endpoint, options);
+    }
+
+    const contentType =
+        response.headers.get("content-type") || "";
+
+    // Si la respuesta no es JSON (servidor caído,
+    // página de error, proxy), usamos el modo demo.
+    if (!contentType.includes("application/json")) {
+        return mockRequest(endpoint, options);
+    }
 
     const data =
         await response.json().catch(() => ({}));
