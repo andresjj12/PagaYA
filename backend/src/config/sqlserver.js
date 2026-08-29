@@ -1,6 +1,8 @@
 const sql = require("mssql");
 require("dotenv").config();
 
+const SQL_ENABLED = process.env.SQL_ENABLED !== "false";
+
 const baseConfig = {
     server: process.env.SQL_SERVER,
     port: Number(process.env.SQL_PORT),
@@ -17,6 +19,14 @@ let mainPool;
 let backupPool;
 
 async function connectSQLServer() {
+    if (!SQL_ENABLED) {
+        console.log("🛑 SQL Server deshabilitado (SQL_ENABLED=false)");
+        return {
+            mainPool: null,
+            backupPool: null
+        };
+    }
+
     try {
         // ==========================================
         // CONEXIÓN A LA BASE PRINCIPAL
@@ -34,17 +44,26 @@ async function connectSQLServer() {
 
 
         // ==========================================
-        // CONEXIÓN A LA BASE DE RESPALDO
+        // CONEXIÓN A LA BASE DE RESPALDO (OPCIONAL)
         // ==========================================
 
-        backupPool = await new sql.ConnectionPool({
-            ...baseConfig,
-            database: process.env.SQL_BACKUP_DATABASE
-        }).connect();
+        if (process.env.SQL_BACKUP_DATABASE) {
+            try {
+                backupPool = await new sql.ConnectionPool({
+                    ...baseConfig,
+                    database: process.env.SQL_BACKUP_DATABASE
+                }).connect();
 
-        console.log("✅ Conexión exitosa con la base de respaldo");
-        console.log(`💾 Base de respaldo: ${process.env.SQL_BACKUP_DATABASE}`);
+                console.log("✅ Conexión exitosa con la base de respaldo");
+                console.log(`💾 Base de respaldo: ${process.env.SQL_BACKUP_DATABASE}`);
+            } catch (error) {
+                backupPool = null;
 
+                console.warn("⚠️ No se pudo conectar con la base de respaldo:");
+                console.warn(error.message);
+                console.warn("   Continuando sin la base de respaldo.");
+            }
+        }
 
         return {
             mainPool,

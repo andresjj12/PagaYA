@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const verificarToken = require("../middleware/auth.middleware");
+const sqlSync = require("../services/sqlSync");
 
 const router = express.Router();
 
@@ -94,7 +95,21 @@ router.post("/register", async (req, res) => {
         });
 
         // --------------------------------------------------
-        // 8. Respuesta
+        // 8. Espejar en SQL Server (best-effort)
+        // --------------------------------------------------
+
+        try {
+            const usuarioSqlId = await sqlSync.insertUsuario(usuario);
+            await sqlSync.insertBilletera(billetera, usuarioSqlId);
+        } catch (error) {
+            console.error(
+                "Error replicando registro en SQL Server:",
+                error.message
+            );
+        }
+
+        // --------------------------------------------------
+        // 9. Respuesta
         // --------------------------------------------------
 
         return res.status(201).json({

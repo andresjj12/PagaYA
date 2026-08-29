@@ -1,6 +1,6 @@
 import { mockRequest } from "./mockBackend";
 
-const API_URL = "https://money-blah-officer-centuries.trycloudflare.com/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 async function request(endpoint, options = {}) {
     const token = localStorage.getItem("token");

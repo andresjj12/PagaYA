@@ -5,6 +5,7 @@ const Wallet = require("../models/Wallet");
 const User = require("../models/User");
 const Transaction = require("../models/Transaction");
 const verificarToken = require("../middleware/auth.middleware");
+const sqlSync = require("../services/sqlSync");
 
 const router = express.Router();
 
@@ -156,6 +157,18 @@ router.post("/recharge", verificarToken, async (req, res) => {
 
         await session.commitTransaction();
 
+        try {
+            const usuarioSqlId = await sqlSync.getUsuarioSqlId(req.usuario.id);
+            const billeteraSqlId = await sqlSync.getBilleteraSqlId(billetera._id);
+
+            if (usuarioSqlId && billeteraSqlId) {
+                await sqlSync.insertTransaccion(transaccion, usuarioSqlId, billeteraSqlId);
+                await sqlSync.updateSaldoBilletera(billetera._id, saldoNuevo);
+            }
+        } catch (error) {
+            console.error("Error replicando recarga en SQL Server:", error.message);
+        }
+
         return res.status(201).json({
             message: "Recarga realizada correctamente",
 
@@ -300,6 +313,18 @@ router.post("/payment", verificarToken, async (req, res) => {
         );
 
         await session.commitTransaction();
+
+        try {
+            const usuarioSqlId = await sqlSync.getUsuarioSqlId(req.usuario.id);
+            const billeteraSqlId = await sqlSync.getBilleteraSqlId(billetera._id);
+
+            if (usuarioSqlId && billeteraSqlId) {
+                await sqlSync.insertTransaccion(transaccion, usuarioSqlId, billeteraSqlId);
+                await sqlSync.updateSaldoBilletera(billetera._id, saldoNuevo);
+            }
+        } catch (error) {
+            console.error("Error replicando pago en SQL Server:", error.message);
+        }
 
         return res.status(201).json({
             message: "Pago realizado correctamente",
@@ -650,7 +675,7 @@ router.post(
             // CREAR MOVIMIENTO REMITENTE
             // ------------------------------------------
 
-            await Transaction.create(
+            const [transaccionEnviada] = await Transaction.create(
                 [
                     {
                         usuario:
@@ -690,7 +715,7 @@ router.post(
             // CREAR MOVIMIENTO DESTINATARIO
             // ------------------------------------------
 
-            await Transaction.create(
+            const [transaccionRecibida] = await Transaction.create(
                 [
                     {
                         usuario:
@@ -731,6 +756,26 @@ router.post(
             // ------------------------------------------
 
             await session.commitTransaction();
+
+            try {
+                const remitenteSqlId = await sqlSync.getUsuarioSqlId(req.usuario.id);
+                const remitenteBilleteraSqlId = await sqlSync.getBilleteraSqlId(billeteraRemitente._id);
+
+                if (remitenteSqlId && remitenteBilleteraSqlId) {
+                    await sqlSync.insertTransaccion(transaccionEnviada, remitenteSqlId, remitenteBilleteraSqlId);
+                    await sqlSync.updateSaldoBilletera(billeteraRemitente._id, remitenteActualizado.saldo);
+                }
+
+                const destinatarioSqlId = await sqlSync.getUsuarioSqlId(destinatario._id);
+                const destinatarioBilleteraSqlId = await sqlSync.getBilleteraSqlId(billeteraDestinatario._id);
+
+                if (destinatarioSqlId && destinatarioBilleteraSqlId) {
+                    await sqlSync.insertTransaccion(transaccionRecibida, destinatarioSqlId, destinatarioBilleteraSqlId);
+                    await sqlSync.updateSaldoBilletera(billeteraDestinatario._id, destinatarioActualizado.saldo);
+                }
+            } catch (error) {
+                console.error("Error replicando transferencia en SQL Server:", error.message);
+            }
 
             return res.status(201).json({
                 message:
