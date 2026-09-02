@@ -257,7 +257,7 @@ function Login() {
                 <div className="signup-card">
                     <div className="signup-content">
                         <div className="signup-text">
-                            <p className="signup-question">¿No tienes cuenta?</p>
+                            <p className="signup-question">¿No tienes cuenta unete a nosotros?</p>
                             <p className="signup-description">Crea una nueva y accede a todos nuestros beneficios</p>
                         </div>
                         <Link to="/registro" className="signup-button">
