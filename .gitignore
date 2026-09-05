@@ -12,7 +12,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Archivos de SO / editor
+# Archivos de SO / editoraaaa
 .DS_Store
 Thumbs.db
 .vscode/*
