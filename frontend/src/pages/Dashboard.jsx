@@ -6,7 +6,7 @@ function Dashboard() {
     const navigate = useNavigate();
 
     // ==========================================
-    // USUARIO
+    // USUARIO - user
     // ==========================================
 
     const [user, setUser] = useState(() => {
