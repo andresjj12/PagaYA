@@ -1,3 +1,4 @@
+// En este componente creo la pantalla de inicio de sesión con React y JSX.
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
@@ -5,6 +6,7 @@ import api from "../services/api";
 function Login() {
     const navigate = useNavigate();
 
+    // Guardo en el estado los campos y opciones que cambian en el formulario.
     const [loginMethod, setLoginMethod] = useState("email");
     const [form, setForm] = useState({
         email: "",
@@ -18,6 +20,7 @@ function Login() {
     const [passwordStrength, setPasswordStrength] = useState(0);
 
     const handleChange = (e) => {
+        // Actualizo el campo editado y recalculo la fortaleza si es la contraseña.
         const { name, value } = e.target;
         setForm({
             ...form,
@@ -49,6 +52,7 @@ function Login() {
     };
 
     const handleSubmit = async (e) => {
+        // Evito que el navegador recargue la página al enviar el formulario.
         e.preventDefault();
 
         setError("");
@@ -93,6 +97,7 @@ function Login() {
         }
     };
 
+    // Relaciono las clases CSS de App.css con la vista renderizada en JSX.
     return (
         <div className="auth-page">
             <span className="shape" aria-hidden="true"></span>

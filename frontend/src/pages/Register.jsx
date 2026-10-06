@@ -1,3 +1,4 @@
+// En este componente construyo el formulario de registro con React y JSX.
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
@@ -5,6 +6,7 @@ import api from "../services/api";
 function Register() {
     const navigate = useNavigate();
 
+    // Mantengo los valores del formulario y sus mensajes en el estado de React.
     const [form, setForm] = useState({
         nombre: "",
         apellido: "",
@@ -21,6 +23,7 @@ function Register() {
     const [agreedTerms, setAgreedTerms] = useState(false);
 
     const handleChange = (e) => {
+        // Actualizo cada campo usando su atributo name como propiedad del estado.
         const { name, value } = e.target;
         setForm({
             ...form,
@@ -48,6 +51,7 @@ function Register() {
     };
 
     const handleSubmit = async (e) => {
+        // Valido los términos y envío los datos sin recargar el navegador.
         e.preventDefault();
         setError("");
         setSuccess("");
@@ -76,6 +80,7 @@ function Register() {
         }
     };
 
+    // Las clases conectan esta estructura JSX con los estilos de App.css.
     return (
         <div className="auth-page">
             <span className="shape" aria-hidden="true"></span>

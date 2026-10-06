@@ -1,9 +1,9 @@
 // ======================================================
 // MOCK BACKEND (MODO DEMO SIN SERVIDOR)
 // ======================================================
-// Simula la API del backend usando localStorage para
-// que la app funcione sin conexión al servidor.
-// Incluye los 2 usuarios hardcodeados.
+// Aquí simulo las respuestas de la API y guardo los datos de prueba
+// en localStorage para que el frontend funcione sin el servidor.
+// También preparo usuarios de ejemplo para probar el flujo.
 // ======================================================
 
 const DB_KEY = "pagaya_mock_db_v1";

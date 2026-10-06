@@ -1,7 +1,7 @@
 /**
- * Cliente central para comunicar el frontend con la API.
- * Encapsula la autenticación, los headers y el fallback al mock local
- * cuando el backend no responde o no devuelve JSON.
+ * En este archivo centralizo las solicitudes del frontend a la API.
+ * Agrego el token y los headers, y uso la simulación local si el servidor
+ * no responde o devuelve un formato distinto de JSON.
  */
 import { mockRequest } from "./mockBackend";
 

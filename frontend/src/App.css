@@ -1,3 +1,9 @@
+/*
+ * En este archivo diseño la interfaz con CSS: organizo las pantallas con
+ * Flexbox y Grid, defino colores, espacios, animaciones y ajustes móviles.
+ * Las clases se conectan con los elementos JSX de mis componentes de React.
+ */
+
 * {
     box-sizing: border-box;
 }
@@ -263,7 +269,7 @@ input {
     background: rgba(107, 43, 125, 0.08);
 }
 
-/* Social Login */
+/* Organizo los botones de acceso social en dos columnas. */
 .social-login {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -306,7 +312,7 @@ input {
     background: rgba(0, 0, 0, 0.04);
 }
 
-/* Divider */
+/* Separo visualmente el acceso alternativo del formulario. */
 .divider {
     text-align: center;
     margin: 20px 0;
@@ -333,7 +339,7 @@ input {
     right: 0;
 }
 
-/* Login Method Tabs */
+/* Presento las opciones para elegir el método de inicio de sesión. */
 .login-method-tabs {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -375,7 +381,7 @@ input {
     background: rgba(107, 43, 125, 0.04);
 }
 
-/* Password Strength Indicator */
+/* Muestro visualmente la fortaleza de la contraseña. */
 .password-strength {
     display: flex;
     align-items: center;
@@ -440,7 +446,7 @@ input {
     color: #2ecc71;
 }
 
-/* Security Options */
+/* Doy estilo a las opciones adicionales de seguridad. */
 .security-options {
     display: flex;
     align-items: center;
@@ -472,7 +478,7 @@ input {
     opacity: 0.8;
 }
 
-/* Biometric Button - Primary */
+/* Resalto el botón de acceso biométrico. */
 .biometric-primary-button {
     display: flex;
     align-items: center;
@@ -635,7 +641,7 @@ input {
     width: 100%;
 }
 
-/* Signup Card */
+/* Diseño la tarjeta que invita a crear una cuenta. */
 .signup-card {
     margin-top: 20px;
     padding: 18px;
@@ -717,7 +723,7 @@ input {
     box-shadow: 0 4px 10px rgba(107, 43, 125, 0.18);
 }
 
-/* Register Page Styles */
+/* Ajusto los elementos propios del formulario de registro. */
 .register-subtitle {
     text-align: center;
     font-size: 0.95rem;
@@ -772,7 +778,7 @@ input {
     text-decoration: underline;
 }
 
-/* Login Card - Mirror of Signup Card */
+/* Mantengo el mismo estilo para la tarjeta que lleva al inicio de sesión. */
 .login-card {
     margin-top: 20px;
     padding: 18px;

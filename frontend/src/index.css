@@ -1,3 +1,4 @@
+/* Fijo la altura base para que la aplicación React pueda ocupar la pantalla. */
 html,
 body,
 #root {

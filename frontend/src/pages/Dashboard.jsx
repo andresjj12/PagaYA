@@ -1,3 +1,5 @@
+// En esta pantalla presento la billetera, sus movimientos y las operaciones disponibles.
+// Uso React para manejar el estado y actualizar la vista según los datos de la API.
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
