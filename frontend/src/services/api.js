@@ -1,3 +1,8 @@
+/**
+ * Cliente central para comunicar el frontend con la API.
+ * Encapsula la autenticación, los headers y el fallback al mock local
+ * cuando el backend no responde o no devuelve JSON.
+ */
 import { mockRequest } from "./mockBackend";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";

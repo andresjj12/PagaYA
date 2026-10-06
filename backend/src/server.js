@@ -1,3 +1,9 @@
+/**
+ * Punto de entrada de la API de PagaYA.
+ * Aquí se arma la app, se registran los endpoints y se valida
+ * que las dependencias críticas (MongoDB y SQL Server) estén listas
+ * antes de dejar la API disponible para el frontend.
+ */
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();

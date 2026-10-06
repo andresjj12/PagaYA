@@ -1,3 +1,8 @@
+/**
+ * Endpoints de billetera y movimientos.
+ * Se encarga de recargas, pagos, transferencias y consulta del saldo,
+ * siempre validando el token del usuario antes de tocar la información.
+ */
 const express = require("express");
 const crypto = require("crypto");
 

@@ -1,3 +1,8 @@
+/**
+ * Modelo principal del usuario.
+ * Aquí se guardan los datos de acceso y perfil del cliente,
+ * además del estado y el rol para controlar permisos.
+ */
 const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(

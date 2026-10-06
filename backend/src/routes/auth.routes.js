@@ -1,3 +1,8 @@
+/**
+ * Rutas de autenticación de la app.
+ * Aquí se crean usuarios, se valida el login y se devuelve el JWT
+ * para proteger las rutas de billetera y transacciones.
+ */
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");

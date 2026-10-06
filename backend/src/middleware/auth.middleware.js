@@ -1,3 +1,8 @@
+/**
+ * Valida el JWT que llega en el header Authorization.
+ * Si el token no existe, está mal formado o ya expiró,
+ * la petición queda bloqueada antes de tocar cualquier ruta privada.
+ */
 const jwt = require("jsonwebtoken");
 
 const verificarToken = (req, res, next) => {

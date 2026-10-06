@@ -1,3 +1,9 @@
+/**
+ * Replica parte del estado de MongoDB en SQL Server.
+ * Esto sirve para tener un segundo sistema de almacenamiento para
+ * reporting y consistencia, aunque MongoDB sigue siendo la fuente
+ * de verdad de la aplicación.
+ */
 const { sql, getSQLPool } = require("../config/sqlserver");
 
 // ======================================================

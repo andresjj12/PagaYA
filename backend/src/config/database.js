@@ -1,3 +1,8 @@
+/**
+ * Conecta la app con MongoDB.
+ * Si la conexión falla, la API no debería seguir con la ejecución
+ * porque la mayoría de los datos de negocio viven ahí.
+ */
 const mongoose = require("mongoose");
 
 const connectDB = async () => {

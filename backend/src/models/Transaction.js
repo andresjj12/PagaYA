@@ -1,3 +1,8 @@
+/**
+ * Historial de movimientos de la billetera.
+ * Cada registro representa una operación que afecta el saldo,
+ * como recargas, pagos o transferencias.
+ */
 const mongoose = require("mongoose");
 
 const transactionSchema = new mongoose.Schema(
