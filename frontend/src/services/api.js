@@ -77,6 +77,18 @@ const api = {
             body: JSON.stringify(datos)
         }),
 
+    requestPasswordReset: (email) =>
+        request("/auth/forgot-password", {
+            method: "POST",
+            body: JSON.stringify({ email })
+        }),
+
+    resetPassword: (datos) =>
+        request("/auth/reset-password", {
+            method: "POST",
+            body: JSON.stringify(datos)
+        }),
+
     profile: () =>
         request("/auth/profile"),
 

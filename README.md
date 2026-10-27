@@ -35,6 +35,10 @@ npm run dev        # desarrollo (nodemon)
 ```
 
 Configuración en `backend/.env` (ya viene incluido un archivo de ejemplo `backend/.env.example`).
+Para habilitar la recuperación de contraseña, configura allí `FRONTEND_URL` y las
+variables SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+`SMTP_PASSWORD` y `MAIL_FROM`) con los datos de tu proveedor de correo. El enlace
+enviado vence en 30 minutos y solo se puede utilizar una vez.
 
 ### 2. Frontend (React — puerto 5173)
 

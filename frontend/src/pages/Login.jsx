@@ -99,7 +99,7 @@ function Login() {
 
     // Relaciono las clases CSS de App.css con la vista renderizada en JSX.
     return (
-        <div className="auth-page">
+        <div className="auth-page login-page">
             <span className="shape" aria-hidden="true"></span>
             <span className="shape-two" aria-hidden="true"></span>
             <span className="shape-three" aria-hidden="true"></span>
@@ -254,7 +254,7 @@ function Login() {
                 </form>
 
                 <div className="auth-links">
-                    <Link to="/" className="forgot-password-link">
+                    <Link to="/recuperar-clave" className="forgot-password-link">
                         <span>¿Olvidó su contraseña?</span>
                     </Link>
                 </div>

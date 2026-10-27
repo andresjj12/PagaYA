@@ -555,6 +555,16 @@ export async function mockRequest(endpoint, options = {}) {
         return mockRegister(db, body);
     }
 
+    if (
+        method === "POST" &&
+        partes[0] === "auth" &&
+        ["forgot-password", "reset-password"].includes(partes[1])
+    ) {
+        throw new Error(
+            "La recuperación de contraseña requiere el servidor y el correo configurados."
+        );
+    }
+
     if (method === "GET" && partes[0] === "auth" && partes[1] === "profile") {
         return mockProfile(db);
     }

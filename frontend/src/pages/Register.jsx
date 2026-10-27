@@ -82,7 +82,7 @@ function Register() {
 
     // Las clases conectan esta estructura JSX con los estilos de App.css.
     return (
-        <div className="auth-page">
+        <div className="auth-page register-page">
             <span className="shape" aria-hidden="true"></span>
             <span className="shape-two" aria-hidden="true"></span>
             <span className="shape-three" aria-hidden="true"></span>

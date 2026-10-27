@@ -4,8 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
+const crearClaveVisual = () =>
+    String(Math.floor(Math.random() * 1000)).padStart(3, "0");
+
 function Dashboard() {
     const navigate = useNavigate();
+    const [visualCardCode, setVisualCardCode] = useState(crearClaveVisual);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            setVisualCardCode(crearClaveVisual());
+        }, 5000);
+
+        return () => window.clearInterval(intervalId);
+    }, []);
 
     // ==========================================
     // USUARIO - user
@@ -1615,8 +1627,44 @@ function Dashboard() {
                         </h2>
                     )}
 
+                    <div className="debit-card" aria-label="Representación visual de tarjeta de débito">
+                        <div className="debit-card-top">
+                            <span className="debit-card-brand">PagaYA</span>
+                            <span className="debit-card-mark">
+                                <span className="debit-card-type">DÉBITO</span>
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M8.5 8.5a5 5 0 0 1 0 7M12 5a10 10 0 0 1 0 14M5 11.5a1 1 0 0 1 0 1" />
+                                </svg>
+                            </span>
+                        </div>
+                        <div className="debit-card-chip" aria-hidden="true">
+                            <span />
+                        </div>
+                        <div className="debit-card-number" aria-label="Número de tarjeta oculto">
+                            •••• &nbsp; •••• &nbsp; •••• &nbsp; ••••
+                        </div>
+                        <div className="debit-card-bottom">
+                            <span className="debit-card-holder">
+                                <small>TITULAR</small>
+                                <strong>
+                                    {`${user.nombre || "USUARIO"} ${user.apellido || ""}`.trim()}
+                                </strong>
+                            </span>
+                            <span
+                                className="debit-card-code"
+                                aria-label={`Clave decorativa ${visualCardCode}. No es una clave de seguridad real.`}
+                            >
+                                <small>CLAVE VISUAL</small>
+                                <strong>{visualCardCode}</strong>
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="wallet-status">
-                        ●{" "}
+                        <span
+                            className="wallet-status-dot"
+                            aria-hidden="true"
+                        />
                         {wallet?.estado ===
                         "activa"
                             ? "Billetera activa"
@@ -1630,6 +1678,9 @@ function Dashboard() {
                 ================================== */}
 
                 <section className="actions">
+                    <h2 className="actions-heading">
+                        Accesos rápidos
+                    </h2>
 
                     <button
                         onClick={() =>
@@ -1642,7 +1693,11 @@ function Dashboard() {
                             "activa"
                         }
                     >
-                        💵 Recargar
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 5v14M5 12h14" />
+                            <circle cx="12" cy="12" r="9" />
+                        </svg>
+                        <span>Recargar</span>
                     </button>
 
                     <button
@@ -1656,7 +1711,10 @@ function Dashboard() {
                             "activa"
                         }
                     >
-                        💸 Transferir
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 7h15m0 0-4-4m4 4-4 4M20 17H5m0 0 4 4m-4-4 4-4" />
+                        </svg>
+                        <span>Transferir</span>
                     </button>
 
                     <button
@@ -1671,7 +1729,10 @@ function Dashboard() {
                                 });
                         }}
                     >
-                        📜 Historial
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M8 5h12M8 10h12M8 15h12M8 20h12M3 5h.01M3 10h.01M3 15h.01M3 20h.01" />
+                        </svg>
+                        <span>Historial</span>
                     </button>
 
                 </section>
@@ -1751,15 +1812,20 @@ function Dashboard() {
                         !transactionsError &&
                         transactions.length ===
                             0 && (
-                            <div className="empty-state">
-
+                        <div className="empty-state transactions-empty">
+                            <span className="empty-state-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                    <path d="M7 3.75h7l4 4v12.5H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z" />
+                                    <path d="M14 3.75v4h4M8.5 12h7M8.5 15.5h7" />
+                                </svg>
+                            </span>
+                            <div>
+                                <strong>Aún no hay movimientos</strong>
                                 <p>
-                                    No tienes
-                                    transacciones
-                                    todavía.
+                                    Cuando realices una operación, aparecerá aquí.
                                 </p>
-
                             </div>
+                        </div>
                         )}
 
                     {/* LISTA */}
@@ -1872,7 +1938,11 @@ function Dashboard() {
                                                                 )
                                                             }
                                                         >
-                                                            👁️ Ver comprobante
+                                                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                                                                <circle cx="12" cy="12" r="3" />
+                                                            </svg>
+                                                            <span>Ver comprobante</span>
                                                         </button>
                                                     )}
 
@@ -1945,10 +2015,16 @@ function Dashboard() {
 
                                 <span className="modal-icon">
 
-                                    {modal ===
-                                    "recharge"
-                                        ? "💵"
-                                        : "💸"}
+                                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                                        {modal === "recharge" ? (
+                                            <>
+                                                <path d="M12 5v14M5 12h14" />
+                                                <circle cx="12" cy="12" r="9" />
+                                            </>
+                                        ) : (
+                                            <path d="M4 7h15m0 0-4-4m4 4-4 4M20 17H5m0 0 4 4m-4-4 4-4" />
+                                        )}
+                                    </svg>
 
                                 </span>
 
@@ -2209,7 +2285,7 @@ function Dashboard() {
                             <div className="receipt-loading">
 
                                 <div className="receipt-loading-icon">
-                                    ⏳
+                                    <span className="receipt-spinner" aria-hidden="true" />
                                 </div>
 
                                 <h2>
@@ -2232,7 +2308,10 @@ function Dashboard() {
                                 <div className="receipt-error">
 
                                     <div className="receipt-error-icon">
-                                        ⚠️
+                                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                                            <circle cx="12" cy="12" r="9" />
+                                            <path d="M12 7v6m0 4h.01" />
+                                        </svg>
                                     </div>
 
                                     <h2>
@@ -2420,7 +2499,7 @@ function Dashboard() {
                                     >
                                         {sharingReceipt
                                             ? "Generando imagen..."
-                                            : "📤 Compartir imagen"}
+                                            : "Compartir imagen"}
                                     </button>
 
                                     <button
